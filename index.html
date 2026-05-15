@@ -64,69 +64,57 @@
         .btn-inspect span { font-size: 24px; margin-bottom: 2px; }
 
         .equation-area {
-            display: flex; justify-content: center; align-items: center; gap: 15px;
+            display: flex; justify-content: center; align-items: center; gap: 10px;
             margin: 40px 0; font-size: 45px; font-weight: 900; color: #2c3e50;
         }
 
         .static-box {
-            padding: 10px 20px; background: #ecf0f1; border-radius: 15px;
-            border: 3px solid #bdc3c7; min-width: 70px; text-align: center;
+            padding: 0 15px; background: #ecf0f1; border-radius: 15px; height: 70px;
+            border: 3px solid #bdc3c7; min-width: 70px; display: flex; align-items: center; justify-content: center;
         }
 
         .operator { font-size: 40px; color: #7f8c8d; }
 
+        .picker-wrapper { 
+            position: relative; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 5px;
+        }
+
+        /* DÖNDÜRME HİSSİ (Gölge ve Maske eklendi) */
         .ios-picker-container {
-            height: 150px; 
-            width: 80px;
-            position: relative;
-            overflow-y: auto; 
-            scroll-snap-type: y mandatory; 
-            background: #f8f9fa;
-            border-radius: 15px;
-            border: 2px solid transparent;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
-            transition: all 0.3s ease;
-            cursor: grab; 
-            
-            scrollbar-width: none; 
-            -ms-overflow-style: none;
-            
-            mask-image: linear-gradient(to bottom, transparent 0%, black 35%, black 65%, transparent 100%);
-            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 35%, black 65%, transparent 100%);
+            height: 180px; width: 100px; position: relative;
+            overflow-y: auto; scroll-snap-type: y mandatory; background: #ecf0f1; border-radius: 15px;
+            border: 3px solid #bdc3c7; 
+            /* SİLİNDİR GÖLGESİ */
+            box-shadow: inset 0 20px 20px -10px rgba(0,0,0,0.4), inset 0 -20px 20px -10px rgba(0,0,0,0.4); 
+            transition: all 0.3s ease; cursor: grab; scrollbar-width: none; -ms-overflow-style: none;
+            /* SİLİNDİR MASKESİ (Altı ve üstü soluklaştırır) */
+            mask-image: linear-gradient(to bottom, transparent 0%, black 25%, black 75%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 25%, black 75%, transparent 100%);
         }
         
         .ios-picker-container:active { cursor: grabbing; }
         .ios-picker-container::-webkit-scrollbar { display: none; }
 
         .ios-picker-highlight {
-            position: absolute;
-            top: 50px; 
-            height: 50px;
-            width: 100%;
-            border-top: 3px solid #3498db;
-            border-bottom: 3px solid #3498db;
-            pointer-events: none; 
-            z-index: 10;
+            position: absolute; top: 60px; height: 60px; width: 100%;
+            border-top: 3px solid #3498db; border-bottom: 3px solid #3498db;
+            background: rgba(52, 152, 219, 0.05); pointer-events: none; z-index: 10;
             transition: border-color 0.3s;
         }
 
-        .ios-picker-list {
-            margin: 0; padding: 0; list-style: none;
-            padding-top: 50px; padding-bottom: 50px; 
-        }
+        .ios-picker-list { margin: 0; padding: 0; list-style: none; padding-top: 60px; padding-bottom: 60px; }
 
         .ios-picker-item {
-            height: 50px;
-            display: flex; justify-content: center; align-items: center;
-            font-size: 30px; font-weight: bold; color: #95a5a6;
-            scroll-snap-align: center; 
-            transition: all 0.2s ease-out;
-            user-select: none;
+            height: 60px; display: flex; justify-content: center; align-items: center;
+            font-size: 35px; font-weight: bold; color: #95a5a6;
+            scroll-snap-align: center; transition: all 0.2s ease-out; user-select: none;
         }
 
-        .ios-picker-item.active {
-            color: #2c3e50;
-            transform: scale(1.3);
+        /* AKTİF (ORTADAKİ) ELEMAN */
+        .ios-picker-item.active { 
+            color: #2c3e50; 
+            transform: scale(1.3); /* Biraz daha büyüktü ki öne çıksın */
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2); /* Hafif gölge ile kalkık hissi */
         }
 
         .ios-picker-container.success {
@@ -225,6 +213,9 @@
 
     let isMistakeMode = false;
     let mistakeQueue = [];
+    
+    let needsNewQuestion = false;
+    let savedScrollTop = 0;
 
     function showScreen(screenId) {
         document.getElementById('level-screen').classList.add('hidden');
@@ -252,6 +243,8 @@
         
         let suffix = [1, 2, 3, 4, 5, 7, 8].includes(level) ? "'ler" : "'lar";
         document.getElementById('level-suffix').innerText = suffix;
+        document.getElementById('insp-level-title').innerText = level;
+        document.getElementById('insp-level-suffix').innerText = suffix;
         
         isMistakeMode = false;
         mistakeQueue = [];
@@ -302,11 +295,13 @@
         }
 
         let pickerHTML = `
-            <div class="ios-picker-container" id="ios-picker">
-                <div class="ios-picker-highlight"></div>
-                <ul class="ios-picker-list" id="picker-list">
-                    ${listItemsHTML}
-                </ul>
+            <div class="picker-wrapper">
+                <div class="ios-picker-container" id="ios-picker">
+                    <div class="ios-picker-highlight"></div>
+                    <ul class="ios-picker-list" id="picker-list">
+                        ${listItemsHTML}
+                    </ul>
+                </div>
             </div>
         `;
         
@@ -323,7 +318,9 @@
         setTimeout(() => {
             const container = document.getElementById('ios-picker');
             let initialGlobalIndex = (20 * 10) + (initialValue - 1);
-            container.scrollTop = initialGlobalIndex * 50; 
+            
+            container.onscroll = null; 
+            container.scrollTop = initialGlobalIndex * 60; 
             
             const list = document.getElementById('picker-list');
             list.children[initialGlobalIndex].classList.add('active');
@@ -339,45 +336,45 @@
         let startY;
         let startScrollTop;
 
-        container.addEventListener('mousedown', (e) => {
+        container.onmousedown = (e) => {
             if (isChecking) return;
             isDragging = true;
             container.style.scrollSnapType = 'none'; 
             startY = e.clientY;
             startScrollTop = container.scrollTop;
-        });
+        };
 
         const stopDragging = () => {
             if (!isDragging) return;
             isDragging = false;
             container.style.scrollSnapType = 'y mandatory'; 
             
-            const itemHeight = 50;
+            const itemHeight = 60; 
             const index = Math.round(container.scrollTop / itemHeight);
             container.scrollTo({ top: index * itemHeight, behavior: 'smooth' });
         };
 
-        container.addEventListener('mouseleave', stopDragging);
-        container.addEventListener('mouseup', stopDragging);
+        container.onmouseleave = stopDragging;
+        container.onmouseup = stopDragging;
 
-        container.addEventListener('mousemove', (e) => {
+        container.onmousemove = (e) => {
             if (!isDragging) return;
             e.preventDefault();
             const y = e.clientY;
             const distance = (y - startY); 
             container.scrollTop = startScrollTop - distance;
-        });
+        };
     }
 
     function setupScrollListener(startIndex) {
         const container = document.getElementById('ios-picker');
         const list = document.getElementById('picker-list');
-        const itemHeight = 50; 
+        const itemHeight = 60; 
         
         let lastCheckedValue = initialValue;
         let lastIndex = startIndex;
 
-        container.addEventListener('scroll', () => {
+        container.onscroll = () => {
             if (isChecking) return;
 
             let index = Math.round(container.scrollTop / itemHeight);
@@ -402,7 +399,7 @@
                     handleWrongAnswer(container);
                 }
             }
-        });
+        };
     }
 
     function handleCorrectAnswer(container) {
@@ -424,14 +421,12 @@
             updateScoreBoard();
 
             mistakeQueue = mistakeQueue.filter(m => m !== correctMultiplier);
+            
             if (mistakeQueue.length === 0) {
                 setTimeout(() => {
                     alert("Tebrikler! Tüm yanlışlarını öğrendin. 🎉");
                     isMistakeMode = false;
-                    
-                    // BUG BURADAYDI ÇÖZÜLDÜ: İnceleme ekranına gitmeden önce yeni soruyu hazırla
-                    generateQuestion(); 
-                    
+                    needsNewQuestion = true; 
                     openInspectScreen(); 
                 }, 1000);
                 return;
@@ -477,7 +472,11 @@
     }
 
     function openInspectScreen() {
+        const container = document.getElementById('ios-picker');
+        if (container) savedScrollTop = container.scrollTop; 
+
         showScreen('inspect-screen');
+        
         document.getElementById('insp-score').innerText = score;
         document.getElementById('insp-correct').innerText = correctCount;
         document.getElementById('insp-wrong').innerText = wrongCount;
@@ -525,6 +524,22 @@
 
     function closeInspectScreen() {
         showScreen('game-screen');
+        
+        if (needsNewQuestion) {
+            generateQuestion();
+            needsNewQuestion = false;
+        } else {
+            const container = document.getElementById('ios-picker');
+            if (container) {
+                container.onscroll = null; 
+                container.scrollTop = savedScrollTop; 
+                
+                setTimeout(() => {
+                    let initialGlobalIndex = Math.round(savedScrollTop / 60);
+                    setupScrollListener(initialGlobalIndex);
+                }, 50);
+            }
+        }
     }
 
     function startMistakeMode() {
