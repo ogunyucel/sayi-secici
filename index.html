@@ -11,6 +11,8 @@
             display: flex; justify-content: center; align-items: center; 
             height: 100vh; margin: 0; 
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            /* Mobilde aşağı yukarı kaymayı engellemek için */
+            overflow: hidden; 
         }
         
         .container { 
@@ -89,8 +91,11 @@
             transition: all 0.3s ease; cursor: grab; scrollbar-width: none; -ms-overflow-style: none;
             mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
             -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+            /* MOBİL (WEBKIT) DESTEKLERİ EKLENDİ */
             perspective: 300px;
+            -webkit-perspective: 300px;
             transform-style: preserve-3d;
+            -webkit-transform-style: preserve-3d;
         }
         
         .ios-picker-container:active { cursor: grabbing; }
@@ -102,15 +107,19 @@
             transition: border-color 0.3s;
         }
 
-        .ios-picker-list { margin: 0; padding: 0; list-style: none; padding-top: 60px; padding-bottom: 60px; }
+        .ios-picker-list { 
+            margin: 0; padding: 0; list-style: none; padding-top: 60px; padding-bottom: 60px; 
+            position: relative; /* JS hesaplaması şaşmasın diye */
+        }
 
         .ios-picker-item {
             height: 60px; display: flex; justify-content: center; align-items: center;
-            /* Font boyutu ve kalınlığı statik kutularla birebir eşitlendi */
             font-size: 45px; font-weight: 900; 
             scroll-snap-align: center; user-select: none;
             transform-origin: center center; 
-            transition: color 0.1s ease, opacity 0.1s ease;
+            -webkit-transform-origin: center center;
+            /* Mobilde kasmayı önlemek için */
+            will-change: transform, opacity;
         }
 
         .ios-picker-container.success {
@@ -141,6 +150,16 @@
             width: 100%; margin-top: 15px; transition: 0.3s;
         }
         .btn-mistakes:hover { background-color: #d35400; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(230, 126, 34, 0.4); }
+
+        /* MOBİL EKRANLAR İÇİN DÜZELTMELER (SIKIŞMAYI ÖNLER) */
+        @media (max-width: 480px) {
+            .container { padding: 20px 15px; width: 95%; }
+            .equation-area { font-size: 35px; gap: 5px; margin: 25px 0; }
+            .static-box { min-width: 55px; height: 60px; padding: 0 10px; border-width: 2px; }
+            .ios-picker-container { width: 85px; }
+            .operator { font-size: 30px; }
+            .ios-picker-item { font-size: 40px; } 
+        }
 
     </style>
 </head>
@@ -212,7 +231,11 @@
         const container = document.getElementById('ios-picker');
         if (!container) return;
         const list = document.getElementById('picker-list');
-        const itemHeight = 60;
+        // Mobilde ve masaüstünde yüksekliği dinamik alalım ki şaşmasın
+        const itemElement = list.querySelector('.ios-picker-item');
+        if (!itemElement) return;
+        const itemHeight = itemElement.offsetHeight || 60;
+        
         const containerCenter = container.scrollTop + (container.clientHeight / 2);
 
         Array.from(list.children).forEach((item) => {
@@ -221,20 +244,22 @@
             const absDistance = Math.abs(distance);
             
             const angle = (distance / itemHeight) * 35; 
-            
             const scale = Math.max(0.6, 1 - (absDistance / 350)); 
             const opacity = Math.max(0, 1 - (absDistance / 160));
 
             const curveX = -(Math.pow(absDistance / 60, 2) * 2.5); 
             const pushZ = -absDistance * 0.4;
 
-            if (absDistance > 130) {
+            if (absDistance > 140) {
                 item.style.opacity = 0;
                 item.style.visibility = 'hidden';
             } else {
                 item.style.visibility = 'visible';
                 
-                item.style.transform = `translateX(${curveX}px) translateZ(${pushZ}px) rotateX(${-angle}deg) scale(${scale})`;
+                // MOBİL İÇİN WEBKIT DESTEKLİ TRANSFORM
+                const transformString = `translateX(${curveX}px) translateZ(${pushZ}px) rotateX(${-angle}deg) scale(${scale})`;
+                item.style.transform = transformString;
+                item.style.webkitTransform = transformString; 
                 
                 if (absDistance < 20) {
                     item.style.color = "#2c3e50"; 
@@ -345,6 +370,7 @@
             eqArea.innerHTML = staticHTML + operatorHTML + pickerHTML + resultHTML;
         }
 
+        // DOM'un tam renderlanmasını bekleyip efektleri basıyoruz
         setTimeout(() => {
             const container = document.getElementById('ios-picker');
             let initialGlobalIndex = (20 * 10) + (initialValue - 1);
@@ -352,61 +378,80 @@
             container.onscroll = null; 
             container.scrollTop = initialGlobalIndex * 60; 
             
-            const list = document.getElementById('picker-list');
-
             setupScrollListener(initialGlobalIndex);
             setupDragListener(); 
-            updatePicker3D(); 
-        }, 10);
+            // İlk yüklemede 3D basılsın
+            window.requestAnimationFrame(updatePicker3D);
+        }, 50);
     }
 
+    // MOBİL DOKUNMATİK DESTEKLİ SÜRÜKLEME
     function setupDragListener() {
         const container = document.getElementById('ios-picker');
         let isDragging = false;
         let startY;
         let startScrollTop;
 
-        container.onmousedown = (e) => {
+        const handleStart = (y) => {
             if (isChecking) return;
             isDragging = true;
             container.style.scrollSnapType = 'none'; 
-            startY = e.clientY;
+            startY = y;
             startScrollTop = container.scrollTop;
         };
 
-        const stopDragging = () => {
+        const handleEnd = () => {
             if (!isDragging) return;
             isDragging = false;
             container.style.scrollSnapType = 'y mandatory'; 
             
-            const itemHeight = 60; 
+            const itemElement = document.querySelector('.ios-picker-item');
+            const itemHeight = itemElement ? itemElement.offsetHeight : 60; 
             const index = Math.round(container.scrollTop / itemHeight);
             container.scrollTo({ top: index * itemHeight, behavior: 'smooth' });
         };
 
-        container.onmouseleave = stopDragging;
-        container.onmouseup = stopDragging;
-
-        container.onmousemove = (e) => {
+        const handleMove = (y, e) => {
             if (!isDragging) return;
-            e.preventDefault();
-            const y = e.clientY;
+            e.preventDefault(); 
             const distance = (y - startY); 
             container.scrollTop = startScrollTop - distance;
         };
+
+        // Mouse (Masaüstü)
+        container.onmousedown = (e) => handleStart(e.clientY);
+        container.onmouseleave = handleEnd;
+        container.onmouseup = handleEnd;
+        container.onmousemove = (e) => handleMove(e.clientY, e);
+
+        // Dokunmatik (Mobil) - Telefonlarda kaydırmanın sırrı burası
+        container.ontouchstart = (e) => handleStart(e.touches[0].clientY);
+        container.ontouchend = handleEnd;
+        container.ontouchcancel = handleEnd;
+        container.ontouchmove = (e) => handleMove(e.touches[0].clientY, e);
     }
 
     function setupScrollListener(startIndex) {
         const container = document.getElementById('ios-picker');
         const list = document.getElementById('picker-list');
-        const itemHeight = 60; 
         
         let lastCheckedValue = initialValue;
+        let isTicking = false;
 
         container.onscroll = () => {
-            updatePicker3D(); 
+            // Mobilde kasmaması için requestAnimationFrame ile güncelliyoruz
+            if (!isTicking) {
+                window.requestAnimationFrame(() => {
+                    updatePicker3D();
+                    isTicking = false;
+                });
+                isTicking = true;
+            }
 
             if (isChecking) return;
+            
+            const itemElement = document.querySelector('.ios-picker-item');
+            const itemHeight = itemElement ? itemElement.offsetHeight : 60; 
 
             let index = Math.round(container.scrollTop / itemHeight);
             
