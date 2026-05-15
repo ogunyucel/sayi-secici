@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sayı Seçici 📱</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        body { 
+            display: flex; justify-content: center; align-items: center; 
+            height: 100vh; margin: 0; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+        }
+        
+        .container { 
+            background: rgba(255, 255, 255, 0.95); padding: 30px; border-radius: 20px; 
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3); text-align: center; width: 90%; max-width: 450px; 
+            position: relative; 
+        }
+
+        h1 { color: #2c3e50; margin-bottom: 10px; font-size: 38px; }
+        p { color: #34495e; font-size: 22px; font-weight: 600; margin-bottom: 25px; }
+        
+        .btn-redirect-main, .btn-close {
+            position: absolute; top: 15px; right: 15px; width: 35px; height: 35px;
+            background-color: #ff4d4d; color: white; text-decoration: none; border: none; border-radius: 50%;
+            cursor: pointer; font-size: 20px; font-weight: bold; display: flex;
+            align-items: center; justify-content: center; transition: 0.3s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2); line-height: 1; z-index: 100; padding: 0;
+        }
+        .btn-redirect-main:hover, .btn-close:hover { background-color: #ff0000; transform: scale(1.1); }
+        
+        .level-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px;}
+        .btn-level { 
+            background-color: #9b59b6; color: white; padding: 15px 0; font-size: 26px; margin: 0;
+            border: none; border-radius: 10px; cursor: pointer; transition: 0.3s; font-weight: bold;
+        }
+        .btn-level:hover { background-color: #8e44ad; transform: translateY(-3px); box-shadow: 0 5px 10px rgba(0,0,0,0.15);}
+        
+        .hidden { display: none !important; }
+
+        #score-board { 
+            margin-bottom: 20px; margin-top: 35px; background: #f8f9fa; padding: 15px; 
+            padding-right: 50px; border-radius: 15px; display: flex; flex-direction: column;
+            gap: 8px; position: relative; border: 2px solid #ecf0f1;
+            cursor: pointer; transition: background-color 0.2s ease;
+        }
+        #score-board:hover { background-color: #e9ecef; }
+        #score-board:hover .btn-inspect { color: #9b59b6; }
+        
+        .main-stats { font-size: 18px; font-weight: bold; color: #2c3e50; }
+        .sub-stats { font-size: 15px; font-weight: bold; display: flex; justify-content: center; gap: 8px; align-items: center;}
+        
+        .stat-correct { color: #27ae60; }
+        .stat-wrong { color: #e74c3c; }
+        .stat-divider { color: #bdc3c7; }
+
+        .btn-inspect {
+            position: absolute; top: 50%; right: 10px; transform: translateY(-50%);
+            display: flex; flex-direction: column;
+            align-items: center; font-size: 12px; font-weight: bold; color: #2c3e50; transition: 0.2s; padding: 0;
+        }
+        .btn-inspect span { font-size: 24px; margin-bottom: 2px; }
+
+        .equation-area {
+            display: flex; justify-content: center; align-items: center; gap: 15px;
+            margin: 40px 0; font-size: 45px; font-weight: 900; color: #2c3e50;
+        }
+
+        .static-box {
+            padding: 10px 20px; background: #ecf0f1; border-radius: 15px;
+            border: 3px solid #bdc3c7; min-width: 70px; text-align: center;
+        }
+
+        .operator { font-size: 40px; color: #7f8c8d; }
+
+        .ios-picker-container {
+            height: 150px; 
+            width: 80px;
+            position: relative;
+            overflow-y: auto; 
+            scroll-snap-type: y mandatory; 
+            background: #f8f9fa;
+            border-radius: 15px;
+            border: 2px solid transparent;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+            cursor: grab; 
+            
+            scrollbar-width: none; 
+            -ms-overflow-style: none;
+            
+            mask-image: linear-gradient(to bottom, transparent 0%, black 35%, black 65%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 35%, black 65%, transparent 100%);
+        }
+        
+        .ios-picker-container:active { cursor: grabbing; }
+        .ios-picker-container::-webkit-scrollbar { display: none; }
+
+        .ios-picker-highlight {
+            position: absolute;
+            top: 50px; 
+            height: 50px;
+            width: 100%;
+            border-top: 3px solid #3498db;
+            border-bottom: 3px solid #3498db;
+            pointer-events: none; 
+            z-index: 10;
+            transition: border-color 0.3s;
+        }
+
+        .ios-picker-list {
+            margin: 0; padding: 0; list-style: none;
+            padding-top: 50px; padding-bottom: 50px; 
+        }
+
+        .ios-picker-item {
+            height: 50px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 30px; font-weight: bold; color: #95a5a6;
+            scroll-snap-align: center; 
+            transition: all 0.2s ease-out;
+            user-select: none;
+        }
+
+        .ios-picker-item.active {
+            color: #2c3e50;
+            transform: scale(1.3);
+        }
+
+        .ios-picker-container.success {
+            border-color: #27ae60; background-color: #eafaf1;
+            box-shadow: 0 0 20px rgba(39, 174, 96, 0.5); pointer-events: none; 
+        }
+        .ios-picker-container.success .ios-picker-highlight { border-color: #27ae60; }
+        .ios-picker-container.success .ios-picker-item.active { color: #27ae60; }
+
+        .ios-picker-container.error {
+            border-color: #e74c3c; background-color: #fdedec;
+            box-shadow: 0 0 20px rgba(231, 76, 60, 0.5); pointer-events: none; 
+        }
+        .ios-picker-container.error .ios-picker-highlight { border-color: #e74c3c; }
+        .ios-picker-container.error .ios-picker-item.active { color: #e74c3c; }
+
+        #message { height: 30px; font-weight: bold; margin-top: 10px; font-size: 22px; transition: 0.3s; color: #34495e; }
+
+        .table-list {
+            display: flex; justify-content: space-between; gap: 15px;
+            margin-top: 15px; padding: 15px; background: #f8f9fa;
+            border-radius: 15px; border: 2px solid #ecf0f1;
+        }
+        .table-column { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+        .table-row { font-size: 17px; font-weight: bold; padding-bottom: 5px; border-bottom: 1px dashed #ddd; text-align: left; white-space: nowrap; }
+        .row-correct { color: #27ae60; }
+        .row-wrong { color: #e74c3c; }
+        .row-unanswered { color: #7f8c8d; }
+
+        .btn-mistakes {
+            background-color: #e67e22; color: white; padding: 15px; font-size: 20px;
+            border: none; border-radius: 10px; cursor: pointer; font-weight: bold;
+            width: 100%; margin-top: 15px; transition: 0.3s;
+        }
+        .btn-mistakes:hover { background-color: #d35400; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(230, 126, 34, 0.4); }
+
+    </style>
+</head>
+<body>
+
+<div id="level-screen" class="container">
+    <a href="https://matfabe.com/oyunlar/" class="btn-redirect-main">×</a>
+    <h1>Sayı Seçici 📱</h1>
+    <p>Seviyeni seç ve oyuna başla!</p>
+    <div class="level-grid" id="levels"></div>
+</div>
+
+<div id="game-screen" class="container hidden">
+    <button class="btn-close" onclick="endGame()">×</button>
+    
+    <div id="score-board" onclick="openInspectScreen()">
+        <div class="main-stats">Skor: <span id="score-display">0</span> | Seviye: <span id="level-display">6</span><span id="level-suffix">'lar</span></div>
+        <div class="sub-stats">
+            <span class="stat-correct">✔ Doğru: <span id="count-correct">0</span></span>
+            <span class="stat-divider">|</span>
+            <span class="stat-wrong">✖ Yanlış: <span id="count-wrong">0</span></span>
+        </div>
+        <div class="btn-inspect">
+            <span>🔍</span>
+            İncele
+        </div>
+    </div>
+
+    <div class="equation-area" id="equation-area"></div>
+
+    <p id="message">Sayıyı doğru yöne kaydır!</p>
+</div>
+
+<div id="inspect-screen" class="container hidden">
+    <button class="btn-close" onclick="closeInspectScreen()">×</button>
+    
+    <div id="score-board" style="padding-right: 15px; cursor: default;">
+        <div class="main-stats">Skor: <span id="insp-score">0</span></div>
+        <div class="sub-stats">
+            <span class="stat-correct">✔ Doğru: <span id="insp-correct">0</span></span>
+            <span class="stat-divider">|</span>
+            <span class="stat-wrong">✖ Yanlış: <span id="insp-wrong">0</span></span>
+        </div>
+    </div>
+
+    <h2 style="color: #2c3e50; margin: 10px 0;"><span id="insp-level-title">6</span><span id="insp-level-suffix">'lar</span> Çarpım Tablosu</h2>
+    <div id="table-list" class="table-list"></div>
+    <button class="btn-mistakes" onclick="startMistakeMode()">Sadece Yanlışlara Çalış</button>
+</div>
+
+<script>
+    let currentLevel = 1;      
+    let correctMultiplier = 1; 
+    let initialValue = 1; 
+
+    let isChecking = false; 
+    let score = 0;
+    let correctCount = 0;
+    let wrongCount = 0;
+    let historyData = {}; 
+
+    let isMistakeMode = false;
+    let mistakeQueue = [];
+
+    function showScreen(screenId) {
+        document.getElementById('level-screen').classList.add('hidden');
+        document.getElementById('game-screen').classList.add('hidden');
+        document.getElementById('inspect-screen').classList.add('hidden');
+        document.getElementById(screenId).classList.remove('hidden');
+    }
+
+    function generateLevelButtons() {
+        const levelsDiv = document.getElementById('levels');
+        levelsDiv.innerHTML = ""; 
+        for (let i = 1; i <= 9; i++) {
+            let btn = document.createElement('button');
+            btn.innerText = i;
+            btn.className = "btn-level";
+            btn.onclick = () => startLevel(i);
+            levelsDiv.appendChild(btn);
+        }
+    }
+    window.onload = generateLevelButtons;
+
+    function startLevel(level) {
+        currentLevel = level;
+        document.getElementById('level-display').innerText = level;
+        
+        let suffix = [1, 2, 3, 4, 5, 7, 8].includes(level) ? "'ler" : "'lar";
+        document.getElementById('level-suffix').innerText = suffix;
+        
+        isMistakeMode = false;
+        mistakeQueue = [];
+        score = 0; correctCount = 0; wrongCount = 0;
+        historyData = {}; 
+        updateScoreBoard();
+
+        showScreen('game-screen');
+        generateQuestion();
+    }
+
+    function updateScoreBoard() {
+        document.getElementById('score-display').innerText = score;
+        document.getElementById('count-correct').innerText = correctCount;
+        document.getElementById('count-wrong').innerText = wrongCount;
+    }
+
+    function generateQuestion() {
+        isChecking = false;
+        const msgBox = document.getElementById('message');
+        msgBox.innerText = "Sayıyı doğru yöne kaydır!";
+        msgBox.style.color = "#34495e";
+
+        if (isMistakeMode) {
+            const randomIndex = Math.floor(Math.random() * mistakeQueue.length);
+            correctMultiplier = mistakeQueue[randomIndex];
+        } else {
+            correctMultiplier = Math.floor(Math.random() * 10) + 1; 
+        }
+
+        const result = currentLevel * correctMultiplier;
+
+        let offset = Math.random() > 0.5 ? 1 : -1;
+        initialValue = correctMultiplier + offset;
+        
+        if(initialValue < 1) initialValue = 10;
+        if(initialValue > 10) initialValue = 1;
+
+        let isPickerOnLeft = Math.random() > 0.5;
+
+        const eqArea = document.getElementById('equation-area');
+        
+        let listItemsHTML = "";
+        for(let loop = 0; loop < 40; loop++) {
+            for(let n=1; n<=10; n++) {
+                listItemsHTML += `<li class="ios-picker-item">${n}</li>`;
+            }
+        }
+
+        let pickerHTML = `
+            <div class="ios-picker-container" id="ios-picker">
+                <div class="ios-picker-highlight"></div>
+                <ul class="ios-picker-list" id="picker-list">
+                    ${listItemsHTML}
+                </ul>
+            </div>
+        `;
+        
+        let staticHTML = `<div class="static-box">${currentLevel}</div>`;
+        let resultHTML = `<div class="operator">=</div><div class="static-box">${result}</div>`;
+        let operatorHTML = `<div class="operator">×</div>`;
+
+        if (isPickerOnLeft) {
+            eqArea.innerHTML = pickerHTML + operatorHTML + staticHTML + resultHTML;
+        } else {
+            eqArea.innerHTML = staticHTML + operatorHTML + pickerHTML + resultHTML;
+        }
+
+        setTimeout(() => {
+            const container = document.getElementById('ios-picker');
+            let initialGlobalIndex = (20 * 10) + (initialValue - 1);
+            container.scrollTop = initialGlobalIndex * 50; 
+            
+            const list = document.getElementById('picker-list');
+            list.children[initialGlobalIndex].classList.add('active');
+
+            setupScrollListener(initialGlobalIndex);
+            setupDragListener(); 
+        }, 10);
+    }
+
+    function setupDragListener() {
+        const container = document.getElementById('ios-picker');
+        let isDragging = false;
+        let startY;
+        let startScrollTop;
+
+        container.addEventListener('mousedown', (e) => {
+            if (isChecking) return;
+            isDragging = true;
+            container.style.scrollSnapType = 'none'; 
+            startY = e.clientY;
+            startScrollTop = container.scrollTop;
+        });
+
+        const stopDragging = () => {
+            if (!isDragging) return;
+            isDragging = false;
+            container.style.scrollSnapType = 'y mandatory'; 
+            
+            const itemHeight = 50;
+            const index = Math.round(container.scrollTop / itemHeight);
+            container.scrollTo({ top: index * itemHeight, behavior: 'smooth' });
+        };
+
+        container.addEventListener('mouseleave', stopDragging);
+        container.addEventListener('mouseup', stopDragging);
+
+        container.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            const y = e.clientY;
+            const distance = (y - startY); 
+            container.scrollTop = startScrollTop - distance;
+        });
+    }
+
+    function setupScrollListener(startIndex) {
+        const container = document.getElementById('ios-picker');
+        const list = document.getElementById('picker-list');
+        const itemHeight = 50; 
+        
+        let lastCheckedValue = initialValue;
+        let lastIndex = startIndex;
+
+        container.addEventListener('scroll', () => {
+            if (isChecking) return;
+
+            let index = Math.round(container.scrollTop / itemHeight);
+            
+            if(index < 0) index = 0;
+            if(index >= list.children.length) index = list.children.length - 1;
+
+            if (lastIndex !== index) {
+                if(list.children[lastIndex]) list.children[lastIndex].classList.remove('active');
+                if(list.children[index]) list.children[index].classList.add('active');
+                lastIndex = index;
+            }
+
+            let selectedValue = (index % 10) + 1; 
+
+            if (selectedValue !== lastCheckedValue) {
+                lastCheckedValue = selectedValue;
+                
+                if (selectedValue === correctMultiplier) {
+                    handleCorrectAnswer(container);
+                } else if (selectedValue !== initialValue) {
+                    handleWrongAnswer(container);
+                }
+            }
+        });
+    }
+
+    function handleCorrectAnswer(container) {
+        isChecking = true;
+        const msgBox = document.getElementById('message');
+
+        container.style.overflowY = 'hidden'; 
+        container.classList.add('success');
+        
+        msgBox.innerText = "Tebrikler! 🎉";
+        msgBox.style.color = "#27ae60";
+
+        score += 10;
+        
+        if (isMistakeMode) {
+            historyData[correctMultiplier] = 'correct';
+            if (wrongCount > 0) wrongCount--;
+            correctCount++;
+            updateScoreBoard();
+
+            mistakeQueue = mistakeQueue.filter(m => m !== correctMultiplier);
+            if (mistakeQueue.length === 0) {
+                setTimeout(() => {
+                    alert("Tebrikler! Tüm yanlışlarını öğrendin. 🎉");
+                    isMistakeMode = false;
+                    
+                    // BUG BURADAYDI ÇÖZÜLDÜ: İnceleme ekranına gitmeden önce yeni soruyu hazırla
+                    generateQuestion(); 
+                    
+                    openInspectScreen(); 
+                }, 1000);
+                return;
+            }
+        } else {
+            correctCount++;
+            updateScoreBoard();
+            
+            if(historyData[correctMultiplier] !== 'wrong') {
+                historyData[correctMultiplier] = 'correct';
+            }
+        }
+
+        setTimeout(() => { generateQuestion(); }, 1200);
+    }
+
+    function handleWrongAnswer(container) {
+        isChecking = true;
+        const msgBox = document.getElementById('message');
+
+        container.style.overflowY = 'hidden'; 
+        container.classList.add('error'); 
+        
+        msgBox.innerText = "Maalesef Yanlış! ❌";
+        msgBox.style.color = "#e74c3c";
+
+        wrongCount++;
+        updateScoreBoard();
+        historyData[correctMultiplier] = 'wrong';
+
+        setTimeout(() => { generateQuestion(); }, 1400); 
+    }
+
+    function endGame() {
+        if (isMistakeMode) {
+            isMistakeMode = false;
+            openInspectScreen(); 
+        } else {
+            if(confirm("Oyunu bitirmek ve seviye seçimine dönmek istiyor musun?")) {
+                showScreen('level-screen'); 
+            }
+        }
+    }
+
+    function openInspectScreen() {
+        showScreen('inspect-screen');
+        document.getElementById('insp-score').innerText = score;
+        document.getElementById('insp-correct').innerText = correctCount;
+        document.getElementById('insp-wrong').innerText = wrongCount;
+        document.getElementById('insp-level-title').innerText = currentLevel;
+        
+        let suffix = [1, 2, 3, 4, 5, 7, 8].includes(currentLevel) ? "'ler" : "'lar";
+        document.getElementById('insp-level-suffix').innerText = suffix;
+
+        const listDiv = document.getElementById('table-list');
+        listDiv.innerHTML = "";
+
+        let col1 = document.createElement('div');
+        col1.className = "table-column";
+        let col2 = document.createElement('div');
+        col2.className = "table-column";
+
+        for(let i = 1; i <= 10; i++) {
+            let div = document.createElement('div');
+            div.className = "table-row";
+            
+            let statusHTML = "";
+            let rowClass = "row-unanswered";
+
+            if (historyData[i] === 'correct') {
+                statusHTML = "✔ ";
+                rowClass = "row-correct";
+            } else if (historyData[i] === 'wrong') {
+                statusHTML = "✖ ";
+                rowClass = "row-wrong";
+            } else {
+                statusHTML = "<span style='opacity:0;'>✔ </span>"; 
+            }
+
+            div.innerHTML = `<span class="${rowClass}">${statusHTML} ${currentLevel} x ${i} = ${currentLevel * i}</span>`;
+            
+            if (i <= 5) {
+                col1.appendChild(div);
+            } else {
+                col2.appendChild(div);
+            }
+        }
+        listDiv.appendChild(col1);
+        listDiv.appendChild(col2);
+    }
+
+    function closeInspectScreen() {
+        showScreen('game-screen');
+    }
+
+    function startMistakeMode() {
+        mistakeQueue = [];
+        for (let i = 1; i <= 10; i++) {
+            if (historyData[i] === 'wrong') mistakeQueue.push(i);
+        }
+        if (mistakeQueue.length === 0) {
+            alert("Harika! Hiç yanlışınız yok.");
+            return;
+        }
+        isMistakeMode = true;
+        showScreen('game-screen');
+        generateQuestion();
+    }
+</script>
+</body>
+</html>
