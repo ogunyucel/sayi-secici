@@ -11,7 +11,6 @@
             display: flex; justify-content: center; align-items: center; 
             height: 100vh; margin: 0; 
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-            /* Mobilde aşağı yukarı kaymayı engellemek için */
             overflow: hidden; 
         }
         
@@ -91,7 +90,6 @@
             transition: all 0.3s ease; cursor: grab; scrollbar-width: none; -ms-overflow-style: none;
             mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
             -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
-            /* MOBİL (WEBKIT) DESTEKLERİ EKLENDİ */
             perspective: 300px;
             -webkit-perspective: 300px;
             transform-style: preserve-3d;
@@ -109,7 +107,7 @@
 
         .ios-picker-list { 
             margin: 0; padding: 0; list-style: none; padding-top: 60px; padding-bottom: 60px; 
-            position: relative; /* JS hesaplaması şaşmasın diye */
+            position: relative; 
         }
 
         .ios-picker-item {
@@ -118,7 +116,6 @@
             scroll-snap-align: center; user-select: none;
             transform-origin: center center; 
             -webkit-transform-origin: center center;
-            /* Mobilde kasmayı önlemek için */
             will-change: transform, opacity;
         }
 
@@ -151,14 +148,16 @@
         }
         .btn-mistakes:hover { background-color: #d35400; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(230, 126, 34, 0.4); }
 
-        /* MOBİL EKRANLAR İÇİN DÜZELTMELER (SIKIŞMAYI ÖNLER) */
+        /* MOBİL EKRANLAR İÇİN DÜZELTMELER - KUTULAR BÜYÜTÜLDÜ */
         @media (max-width: 480px) {
-            .container { padding: 20px 15px; width: 95%; }
-            .equation-area { font-size: 35px; gap: 5px; margin: 25px 0; }
-            .static-box { min-width: 55px; height: 60px; padding: 0 10px; border-width: 2px; }
+            .container { padding: 20px 10px; width: 95%; }
+            /* Fontları tekerlekle uyumlu olsun diye 42px'e çektik */
+            .equation-area { font-size: 42px; gap: 6px; margin: 25px 0; }
+            /* Kutuların yükseklik ve genişliklerini arttırdık */
+            .static-box { min-width: 65px; height: 65px; padding: 0 5px; border-width: 2px; }
             .ios-picker-container { width: 85px; }
-            .operator { font-size: 30px; }
-            .ios-picker-item { font-size: 40px; } 
+            .operator { font-size: 35px; }
+            .ios-picker-item { font-size: 42px; } 
         }
 
     </style>
@@ -231,7 +230,6 @@
         const container = document.getElementById('ios-picker');
         if (!container) return;
         const list = document.getElementById('picker-list');
-        // Mobilde ve masaüstünde yüksekliği dinamik alalım ki şaşmasın
         const itemElement = list.querySelector('.ios-picker-item');
         if (!itemElement) return;
         const itemHeight = itemElement.offsetHeight || 60;
@@ -256,7 +254,6 @@
             } else {
                 item.style.visibility = 'visible';
                 
-                // MOBİL İÇİN WEBKIT DESTEKLİ TRANSFORM
                 const transformString = `translateX(${curveX}px) translateZ(${pushZ}px) rotateX(${-angle}deg) scale(${scale})`;
                 item.style.transform = transformString;
                 item.style.webkitTransform = transformString; 
@@ -370,7 +367,6 @@
             eqArea.innerHTML = staticHTML + operatorHTML + pickerHTML + resultHTML;
         }
 
-        // DOM'un tam renderlanmasını bekleyip efektleri basıyoruz
         setTimeout(() => {
             const container = document.getElementById('ios-picker');
             let initialGlobalIndex = (20 * 10) + (initialValue - 1);
@@ -380,12 +376,10 @@
             
             setupScrollListener(initialGlobalIndex);
             setupDragListener(); 
-            // İlk yüklemede 3D basılsın
             window.requestAnimationFrame(updatePicker3D);
         }, 50);
     }
 
-    // MOBİL DOKUNMATİK DESTEKLİ SÜRÜKLEME
     function setupDragListener() {
         const container = document.getElementById('ios-picker');
         let isDragging = false;
@@ -418,13 +412,11 @@
             container.scrollTop = startScrollTop - distance;
         };
 
-        // Mouse (Masaüstü)
         container.onmousedown = (e) => handleStart(e.clientY);
         container.onmouseleave = handleEnd;
         container.onmouseup = handleEnd;
         container.onmousemove = (e) => handleMove(e.clientY, e);
 
-        // Dokunmatik (Mobil) - Telefonlarda kaydırmanın sırrı burası
         container.ontouchstart = (e) => handleStart(e.touches[0].clientY);
         container.ontouchend = handleEnd;
         container.ontouchcancel = handleEnd;
@@ -439,7 +431,6 @@
         let isTicking = false;
 
         container.onscroll = () => {
-            // Mobilde kasmaması için requestAnimationFrame ile güncelliyoruz
             if (!isTicking) {
                 window.requestAnimationFrame(() => {
                     updatePicker3D();
